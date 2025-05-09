@@ -224,5 +224,5 @@ class Tank:
 
 
     # Property Incrementers
-    # Ordinance lists
+    # Ordinance list
     # YOu don't want to go through all of those objects, so just make tack a new one on
