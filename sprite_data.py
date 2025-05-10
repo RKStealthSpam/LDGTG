@@ -33,6 +33,17 @@ def _san_score(score):
         raise ValueError(f"Value for \'score\' must be 0 or greater, received {score}")
     return score
 
+def _san_velocity(velocity):
+    if not isinstance(velocity, tuple):
+        raise TypeError(f"Value for \'velocity\' must be tuple, received {type(velocity)}")
+    if len(velocity) != 2:
+        raise ValueError(f"Length of \'velocity\' tuple must be 2, received {len(velocity)}")
+    if (not isinstance(velocity[0], float)) and (not isinstance(velocity[0], int)):
+        raise TypeError(f"velocity tuple \'values\' must contain float, received {type(velocity[0])}")
+    if (not isinstance(velocity[1], float)) and (not isinstance(velocity[0], int)):
+        raise TypeError(f"velocity tuple \'values\' must contain float, received {type(velocity[1])}")
+    return tuple((float(velocity[0]), float(velocity[1])))
+
 def _san_acceleration(acceleration):
     if not isinstance(acceleration, tuple):
         raise TypeError(f"Value for \'acceleration\' must be tuple, received {type(acceleration)}")
@@ -88,12 +99,12 @@ def _san_stats(stats):
 
 
 class Ordinance:
-    def __init__(self, location, velocity, acceleration, rotation, parent):
+    def __init__(self, location, velocity, acceleration, rotation, parent, size, health, damage):
         pass
 
 
 class Tank:
-    def __init__(self, location, rotation, team, score, acceleration=(0, 0), health=1, max_health=100, path=0, ordinance=np.array([]), stats=None):
+    def __init__(self, location, rotation, team, score, velocity=(0, 0), acceleration=(0, 0), health=1, max_health=100, path=0, ordinance=np.array([]), stats=None, allow_san_bypass=False):
         self.__location = None
         self.set_location(location)
 
@@ -106,10 +117,17 @@ class Tank:
         self.__score = None
         self.set_score(score)
 
+        if velocity == (0, 0):
+            self.__velocity = (0, 0)
+        else:
+            self.__velocity = None
+            self.set_velocity(velocity)
+
         if acceleration == (0, 0):
             self.__acceleration = (0, 0)
         else:
             self.__acceleration = None
+            self.set_acceleration(acceleration)
 
         if health == 1:
             self.__health = float(health)
@@ -133,10 +151,12 @@ class Tank:
         self.set_ordinance(ordinance)
 
         if stats is None:
-            stats = np.array([0, 0, 0, 0, 0, 0, 0])
+            stats = np.array([0, 0, 0, 0, 0, 0, 0, 0])
         else:
             self.__stats = None
             self.set_stats(stats)
+
+        self.__allow_san_bypass = allow_san_bypass
 
 
     # Property Getters
@@ -155,6 +175,10 @@ class Tank:
     @property
     def score(self):
         return self.__score
+
+    @property
+    def velocity(self):
+        return self.__velocity
 
     @property
     def acceleration(self):
@@ -182,43 +206,58 @@ class Tank:
 
 
     # Property Setters
-    def set_location(self, location):
+    def set_location(self, location, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__location = location
         sanitized = _san_location(location)
         self.__location = sanitized
 
-    def set_rotation(self, rotation):
+    def set_rotation(self, rotation, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__rotation = rotation
         sanitized = _san_rotation(rotation)
         self.__rotation = sanitized
 
-    def set_team(self, team):
+    def set_team(self, team, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__team = team
         sanitized = _san_team(team)
         self.__team = sanitized
 
-    def set_score(self, score):
+    def set_score(self, score, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__score = score
         sanitized = _san_score(score)
         self.__score = sanitized
 
-    def set_acceleration(self, acceleration):
+    def set_velocity(self, velocity, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__velocity = velocity
+        sanitized = _san_velocity(velocity)
+        self.set_velocity(sanitized)
+
+    def set_acceleration(self, acceleration, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__acceleration = acceleration
         sanitized = _san_acceleration(acceleration)
         self.__acceleration = sanitized
 
-    def set_health(self, health):
+    def set_health(self, health, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__health = health
         sanitized = _san_health(health)
         self.__health = sanitized
 
-    def set_max_health(self, max_health):
+    def set_max_health(self, max_health, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__max_health = max_health
         sanitized = _san_max_health(max_health)
         self.__max_health = sanitized
 
-    def set_path(self, path):
+    def set_path(self, path, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__path = path
         sanitized = _san_path(path)
         self.__path = sanitized
 
-    def set_ordinance(self, ordinance):
+    def set_ordinance(self, ordinance, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__ordinance = ordinance
         sanitized = _san_ordinance(ordinance)
         self.__ordinance = sanitized
 
-    def set_stats(self, stats):
+    def set_stats(self, stats, __bypass_san=False):
+        if __bypass_san and self.__allow_san_bypass: self.__stats = stats
         sanitized = _san_stats(stats)
         self.__stats = sanitized
 
@@ -226,3 +265,29 @@ class Tank:
     # Property Incrementers
     # Ordinance list
     # YOu don't want to go through all of those objects, so just make tack a new one on
+    def launch_ordinance(self):
+        pass
+
+    def stat_increase(self):
+        pass
+
+    def stat_refund(self, stat):
+        pass
+
+    def move(self, time_increment, __bypass_san=False):
+        # Time increment input sanitizing
+        if (not __bypass_san) or (not self.__allow_san_bypass):
+            if (not isinstance(time_increment, float)) and (not isinstance(time_increment, int)):
+                raise TypeError(f"Value for \'time_increment\' must be float, received {type(time_increment)}")
+            if time_increment <=0:
+                raise ValueError(f"Value for \'time_increment\' must be greater than 0, received {time_increment}")
+
+        new_velocity = (self.__velocity[0] + (self.__acceleration[0] * time_increment),
+                        self.__velocity[1] + (self.__acceleration[1] * time_increment))
+
+        new_location = (self.__location[0] + (self.__velocity[0] * time_increment),
+                        self.__location[1] + (self.__velocity[1] * time_increment))
+
+        # NOT SANITIZED
+        self.__velocity = new_velocity
+        self.__location = new_location
